@@ -1,0 +1,59 @@
+version: "3.8"
+services:
+  weather:
+    build:
+      context: ./weather
+      dockerfile: Dockerfile
+    image: weather:latest
+    env_file:
+      - env.weather
+    networks:
+      - weather_net
+    restart: always
+ 
+  pushgateway:
+    image: prom/pushgateway
+    ports:
+      - 9091:9091
+    networks:
+      - weather_net
+    restart: always
+
+  prometheus:
+     build:
+       context: ./prometheus
+       dockerfile: Dockerfile
+     image: prometheus-weather:latest
+     user: root
+     command:
+       - '--config.file=/etc/prometheus/prometheus.yml'
+       - '--storage.tsdb.path=/prometheus_data'
+     ports:
+       - 9090:9090
+     volumes:
+       - prometheus_data:/prometheus_data
+     networks:
+       - weather_net
+     restart: always
+
+  grafana:
+    image: grafana/grafana
+    user: "472"
+    ports:
+      - 3000:3000
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on: 
+      - prometheus
+    networks:
+      - weather_net
+    restart: always
+
+networks:
+  weather_net:
+
+volumes:
+  prometheus_data:
+  grafana_data:
